@@ -20,37 +20,27 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-          cache: gradle
 
-      - name: Check Android environment
-        run: |
-          echo "JAVA_HOME=$JAVA_HOME"
-          java -version
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
-          ls -la "$ANDROID_HOME" || true
-
-      - name: Make Gradle executable
-        run: chmod +x gradlew
-
-      - name: Clean project
-        run: ./gradlew clean --stacktrace
+      - name: Set up Gradle 8.7
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.7'
 
       - name: Build Release APK
-        run: ./gradlew assembleRelease --stacktrace
+        run: gradle assembleRelease --stacktrace
 
       - name: Build Release AAB
-        run: ./gradlew bundleRelease --stacktrace
+        run: gradle bundleRelease --stacktrace
 
-      - name: Find APK and AAB
+      - name: Find generated APK and AAB
         run: |
           echo "===== APK ====="
-          find . -type f -name "*.apk" -print
+          find app/build/outputs/apk -type f -name "*.apk" -print || true
 
           echo "===== AAB ====="
-          find . -type f -name "*.aab" -print
+          find app/build/outputs/bundle -type f -name "*.aab" -print || true
 
-      - name: Prepare release
+      - name: Prepare release files
         run: |
           mkdir -p release
 
@@ -59,22 +49,23 @@ jobs:
 
           if [ -z "$APK" ]; then
             echo "ERROR: APK topilmadi!"
-            echo "APK build papkasini tekshirish:"
             find app/build/outputs -type f -print || true
             exit 1
           fi
 
           if [ -z "$AAB" ]; then
             echo "ERROR: AAB topilmadi!"
-            echo "AAB build papkasini tekshirish:"
             find app/build/outputs -type f -print || true
             exit 1
           fi
 
+          echo "APK topildi: $APK"
+          echo "AAB topildi: $AAB"
+
           cp "$APK" release/BirZum24.apk
           cp "$AAB" release/BirZum24.aab
 
-          echo "===== RELEASE ====="
+          echo "===== RELEASE FILES ====="
           ls -lah release
 
       - name: Upload APK and AAB

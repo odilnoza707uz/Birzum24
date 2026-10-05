@@ -22,11 +22,19 @@ jobs:
           java-version: '17'
           cache: gradle
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Check Android environment
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME"
+          java -version
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          ls -la "$ANDROID_HOME" || true
 
       - name: Make Gradle executable
         run: chmod +x gradlew
+
+      - name: Clean project
+        run: ./gradlew clean --stacktrace
 
       - name: Build Release APK
         run: ./gradlew assembleRelease --stacktrace
@@ -34,15 +42,15 @@ jobs:
       - name: Build Release AAB
         run: ./gradlew bundleRelease --stacktrace
 
-      - name: Show generated files
+      - name: Find APK and AAB
         run: |
-          echo "=== APK files ==="
-          find app/build/outputs/apk -type f -name "*.apk" -print || true
+          echo "===== APK ====="
+          find . -type f -name "*.apk" -print
 
-          echo "=== AAB files ==="
-          find app/build/outputs/bundle -type f -name "*.aab" -print || true
+          echo "===== AAB ====="
+          find . -type f -name "*.aab" -print
 
-      - name: Prepare release files
+      - name: Prepare release
         run: |
           mkdir -p release
 
@@ -51,21 +59,22 @@ jobs:
 
           if [ -z "$APK" ]; then
             echo "ERROR: APK topilmadi!"
+            echo "APK build papkasini tekshirish:"
+            find app/build/outputs -type f -print || true
             exit 1
           fi
 
           if [ -z "$AAB" ]; then
             echo "ERROR: AAB topilmadi!"
+            echo "AAB build papkasini tekshirish:"
+            find app/build/outputs -type f -print || true
             exit 1
           fi
-
-          echo "APK: $APK"
-          echo "AAB: $AAB"
 
           cp "$APK" release/BirZum24.apk
           cp "$AAB" release/BirZum24.aab
 
-          echo "=== Release files ==="
+          echo "===== RELEASE ====="
           ls -lah release
 
       - name: Upload APK and AAB

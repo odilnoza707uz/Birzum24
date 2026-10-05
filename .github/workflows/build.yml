@@ -1,19 +1,76 @@
-- name: Find and prepare APK
-  run: |
-    mkdir -p release
+name: Build BirZum24 Android
 
-    echo "=== APK files ==="
-    find app/build/outputs/apk -type f -name "*.apk" -print
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
 
-    APK=$(find app/build/outputs/apk -type f -name "*.apk" | head -n 1)
+jobs:
+  build:
+    name: Build APK and AAB
+    runs-on: ubuntu-latest
 
-    if [ -z "$APK" ]; then
-      echo "ERROR: APK topilmadi!"
-      exit 1
-    fi
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
 
-    echo "Found APK: $APK"
-    cp "$APK" release/BirZum24.apk
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
 
-    echo "=== Release files ==="
-    ls -lah release
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Make Gradle executable
+        run: chmod +x gradlew
+
+      - name: Build Release APK
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Build Release AAB
+        run: ./gradlew bundleRelease --stacktrace
+
+      - name: Show generated files
+        run: |
+          echo "=== APK files ==="
+          find app/build/outputs/apk -type f -name "*.apk" -print || true
+
+          echo "=== AAB files ==="
+          find app/build/outputs/bundle -type f -name "*.aab" -print || true
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release
+
+          APK=$(find app/build/outputs/apk -type f -name "*.apk" | head -n 1)
+          AAB=$(find app/build/outputs/bundle -type f -name "*.aab" | head -n 1)
+
+          if [ -z "$APK" ]; then
+            echo "ERROR: APK topilmadi!"
+            exit 1
+          fi
+
+          if [ -z "$AAB" ]; then
+            echo "ERROR: AAB topilmadi!"
+            exit 1
+          fi
+
+          echo "APK: $APK"
+          echo "AAB: $AAB"
+
+          cp "$APK" release/BirZum24.apk
+          cp "$AAB" release/BirZum24.aab
+
+          echo "=== Release files ==="
+          ls -lah release
+
+      - name: Upload APK and AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: BirZum24-release
+          path: release/
+          if-no-files-found: error
